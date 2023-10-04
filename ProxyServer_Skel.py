@@ -1,5 +1,6 @@
 from socket import *
 import os
+import io
 import sys
 
 if len(sys.argv) <= 1:
@@ -30,14 +31,18 @@ while 1:
 	print ('Ready to serve...')
 	tcpCliSock, addr = tcpSerSock.accept()
 	print ('Received a connection from:' ,addr)
-	message = tcpCliSock.recv(1024)
+	message = tcpCliSock.recv(1024).decode('utf-8')
 	print ('This is the message received from the client:', message)
 
 
-	print ('Message end')
+	# print ('Message end')
 
-	# Extract the filename and hostname from the given message
-	print (message.split()[1])
+	# # Extract the filename and hostname from the given message
+	# message = message.split()[1].partition("/")[2]
+	# message = message.encode('utf-8')
+	# print ("Message type", type(message))
+	# print ("Message", message)
+	
 	filename = message.split()[1].partition("/")[2]
 	filename = filename.split("/")
 	print ("Filename", filename)
@@ -60,12 +65,16 @@ while 1:
 		outputdata = f.readlines()
 		fileExist = "true"
 		# ProxyServer finds a cache hit and generates a response message
-		tcpCliSock.send("HTTP/1.0 200 OK\r\n")
+		tcpCliSock.send(("HTTP/1.0 200 OK\r\n").encode('utf-8'))
 
 		# You might want to play with this part.  It is not always html in the cache
-		tcpCliSock.send("Content-Type:text/html\r\n")
+		tcpCliSock.send(("Content-Type:text/html\r\n".encode('utf-8')))
 
 		# Fill in start.
+		# send the content of the file to the client
+		for i in range(0, len(outputdata)):
+			tcpCliSock.send(outputdata[i].encode('utf-8'))
+
 
 		# Fill in end.
 
@@ -74,21 +83,29 @@ while 1:
 	except IOError:
 		if fileExist == "false":
 			# Create a socket on the proxyserver
-			c = 'something'
+			c = socket(AF_INET, SOCK_STREAM)
 
 			try:
 				# Connect to the socket to port 80
 
 				# Fill in start.
 
+				c.connect((serverAddr, 80))
+
 				# Fill in end.
 
 				# Create a temporary file on this socket and ask port 80 for the file requested by the client
-				fileobj = c.makefile('r', 0)
-				fileobj.write("GET "+"http://" + filename + " HTTP/1.0\nHost: "+hostname+ "\n\n")
+				fileobj = c.makefile('rwb', 0)
+				fileobj.write(("GET "+"http://" + filename + " HTTP/1.0\nHost: "+hostname+ "\n\n").encode('utf-8'))
+
+
 				# Read the response into buffer
 
 				# Fill in start.
+
+				buffer = fileobj.readlines()
+
+
 
 				# Fill in end.
 
@@ -101,14 +118,37 @@ while 1:
 				tmpFile = open("./" + filetouse,"wb")
 				# Fill in start.
 
+				tmpFile.write(buffer[0])
+				c.send(buffer[0])
+
 				# Fill in end.
 
-			except:
+			except Exception as error:
 				print ("Illegal request")
+				# print out the error message that python reports
+				print ("Error: ", error)
+
+				# print the line that caused the error, if possible
+				print ("Line: ", error.__traceback__.tb_lineno)
+				# print content of the line
+				print ("Line content: ", error.__traceback__.tb_frame.f_code.co_name)
+
+				# close the client socket and release the address
+				c.close()
+				tcpCliSock.close()
+				tcpSerSock.close()
+
+				# get session id and terminate the program
+				os.system("curl -s -X GET http://localhost:12000/terminate")
+				
+
+				exit()
+
 		else:
 			# HTTP response message for file not found
 			tcpCliSock.send("HTTP/1.0 404 sendErrorErrorError\r\n")
 			# Fill in start.
+			
 
 			# Fill in end.
 
