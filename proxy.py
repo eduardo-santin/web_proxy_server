@@ -31,7 +31,7 @@ while 1:
 	print ('Ready to serve...')
 	tcpCliSock, addr = tcpSerSock.accept()
 	print ('Received a connection from:' ,addr)
-	message = tcpCliSock.recv(1024).decode('utf-8')
+	message = tcpCliSock.recv(4086).decode(encoding='iso-8859-1')
 	print ('This is the message received from the client:', message)
 
 
@@ -90,13 +90,13 @@ while 1:
 
 				# Fill in start.
 
-				c.connect((serverAddr, 80))
+				c.connect((hostname, 80))
 
 				# Fill in end.
 
 				# Create a temporary file on this socket and ask port 80 for the file requested by the client
 				fileobj = c.makefile('rwb', 0)
-				fileobj.write(("GET "+"http://" + filename + " HTTP/1.0\nHost: "+hostname+ "\n\n").encode('utf-8'))
+				fileobj.write(("GET http://" + filename + " HTTP/1.0\n\n").encode('utf-8'))
 
 
 				# Read the response into buffer
@@ -104,6 +104,8 @@ while 1:
 				# Fill in start.
 
 				buffer = fileobj.readlines()
+				print ("Buffer", buffer)
+				
 
 
 
@@ -117,9 +119,19 @@ while 1:
 					
 				tmpFile = open("./" + filetouse,"wb")
 				# Fill in start.
+				print ("Buffer length", len(buffer))
+				print ("Buffer type", type(buffer))
+				# first buffer item
+				print ("Buffer item index 0", buffer[0])
 
-				tmpFile.write(buffer[0])
-				c.send(buffer[0])
+				# recurse the buffer and write the html content to the file
+				for i in range(0, len(buffer)):
+					tmpFile.write(buffer[i])
+				
+				tmpFile.close()
+
+				# tmpFile.write(buffer[0])
+				# c.send(buffer[0])
 
 				# Fill in end.
 
@@ -146,7 +158,7 @@ while 1:
 
 		else:
 			# HTTP response message for file not found
-			tcpCliSock.send("HTTP/1.0 404 sendErrorErrorError\r\n")
+			tcpCliSock.send("HTTP/1.0 404 sendErrorErrorError\r\n".encode(encoding='iso-8859-1'))
 			# Fill in start.
 			
 
@@ -156,3 +168,4 @@ while 1:
 	tcpCliSock.close()
 
 tcpSerSock.close()
+sys.exit()
