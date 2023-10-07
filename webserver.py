@@ -1,16 +1,20 @@
-#import socket module
+# Eduardo Santín
+# CCOM 4205
+# Project 1 - Application Layer
 from socket import *
 import os
 import sys
 
-# import time for debugging
-import time
+# set debug mode
+# switch to True to enable debug mode
+debug = True
 
 # create a server socket, bind it to a port and start listening
 tcpSerSock = socket(AF_INET, SOCK_STREAM)
 
 # assign port number
-# going with 8080 because 80 is used by the system
+# going with 8080 because 80 is used by the system on my machine
+# and is giving me a permission error
 serverPort = 8080
 
 # assign server address
@@ -29,11 +33,11 @@ while 1:
         print("Ready to serve...")
         connectionSocket, addr = tcpSerSock.accept()
         print("Received a connection from:", addr)
+
         # get the message from the client
-        # for some reason utf-8 encoding works and then it doesn't so 
-        # trying iso-8859-1 and it has worked so far
-        message = connectionSocket.recv(4086).decode('utf-8')
-        print ("Message", message)
+        message = connectionSocket.recv(1024).decode('utf-8')
+        if debug:
+            print ("Message", message)
 
         filename = message.split()[1].partition("/")[2]
         print ("Filename", filename)
@@ -47,10 +51,14 @@ while 1:
 
         # send one HTTP header line into socket
         connectionSocket.send(("HTTP/1.1 200 OK\r\n").encode('utf-8'))
+
+        # send the charset for the content to be utf-8
+        connectionSocket.send(("Content-Type: text/html; charset=utf-8\r\n").encode('utf-8'))
         
         #Send the content of the requested file to the client
         for i in range(0, len(outputdata)):
-            print ("Outputdata[" + str(i) + "]", outputdata[i])
+            if debug:
+                print ("Outputdata[" + str(i) + "]", outputdata[i])
             connectionSocket.send((outputdata[i]).encode('utf-8'))
 
         # finish formatting the message to send to the client
