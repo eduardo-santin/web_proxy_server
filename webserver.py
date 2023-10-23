@@ -9,19 +9,50 @@ import sys
 # switch to True to enable debug mode
 debug = True
 
+
+# text_types =['html', 'css', 'js']
+
+def sendTextData(socket, filename, fileExtension):
+	if fileExtension == "js":
+		fileExtension = "javascript"
+
+	# Send http response
+	socket.send(("HTTP/1.1 200 OK\r\n").encode('utf-8'))
+
+	# create content type message
+	contentType = "Content-Type: text/" + fileExtension + "; charset=utf-8\r\n"
+
+	# send content type
+	socket.send((contentType).encode('utf-8'))
+
+	# open file in read mode
+	f = open(os.path.join("./", filename), "rb")
+
+	# read file content and send it to the client
+	# using with, it will close the file automatically
+	with f:
+		socket.sendall(f.read())
+	
+
+
 # create a server socket, bind it to a port and start listening
 tcpSerSock = socket(AF_INET, SOCK_STREAM)
 
 # assign port number
 # going with 8080 because 80 is used by the system on my machine
 # and is giving me a permission error
-serverPort = 8080
+serverPort = 80
 
 # assign server address
 serverAddr = "localhost"
 
 # bind to the port  
-tcpSerSock.bind((serverAddr, serverPort))
+try:
+    tcpSerSock.bind((serverAddr, serverPort))
+except OSError:
+    print("Address already in use")
+    tcpSerSock.bind((serverAddr, 8080))
+    print("Using port 8080")
 
 # start listening for connections from clients(browser)
 tcpSerSock.listen(1)
@@ -42,32 +73,17 @@ while 1:
         filename = message.split()[1].partition("/")[2]
         print ("Filename", filename)
 
+        fileExtension = filename.split(".")[1]
 
-        f = open(filename, "r")
-
-        # collect the html file from the file system
-        outputdata = f.readlines()
-        print ("Outputdata", outputdata)
-
-        # send one HTTP header line into socket
-        connectionSocket.send(("HTTP/1.1 200 OK\r\n").encode('utf-8'))
-
-        # send the charset for the content to be utf-8
-        connectionSocket.send(("Content-Type: text/html; charset=utf-8\r\n").encode('utf-8'))
-        
-        #Send the content of the requested file to the client
-        for i in range(0, len(outputdata)):
-            if debug:
-                print ("Outputdata[" + str(i) + "]", outputdata[i])
-            connectionSocket.send((outputdata[i]).encode('utf-8'))
-
-        # finish formatting the message to send to the client
-        # and close the connection socket
-        connectionSocket.send(("\r\n").encode('utf-8'))
+        sendTextData(connectionSocket, filename, fileExtension)
         connectionSocket.close()
+        print("Connection closed")
+     
+
 
     except IOError:
         #Send response message for file not found
         connectionSocket.send(("HTTP/1.1 404 Not Found\r\n").encode('utf-8'))
         #Close client socket
         connectionSocket.close()
+        print("Connection closed, file not found")

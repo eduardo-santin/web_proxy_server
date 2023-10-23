@@ -8,7 +8,36 @@ import sys
 
 # set debug mode
 # switch to True to enable debug mode
-debug = False
+debug = True
+
+
+
+
+
+def sendTextData(socket, filename, fileExtension):
+
+	print(filename)
+	if fileExtension == "js":
+		fileExtension = "javascript"
+
+	# Send http response
+	socket.send(("HTTP/1.0 200 OK\r\n").encode('utf-8'))
+
+	# create content type message
+	contentType = "Content-Type: text/" + fileExtension + "\r\n"
+
+	# send content type
+	socket.send((contentType).encode('utf-8'))
+
+	# open file in read mode
+	f = open(os.path.abspath(filename), "rb")
+
+	# read file content and send it to the client
+	# using with, it will close the file automatically
+	with f:
+		socket.sendall(f.read())
+	
+
 
 if len(sys.argv) <= 1:
 	print ('Usage : "python ProxyServer.py server_ip"\n[server_ip : It is the IP Address Of Proxy Server')
@@ -87,22 +116,18 @@ while 1:
 		filetouse += "index.html"
 
 	try:
-		# Check wether the file exist in the cache
-		f = open(filetouse, "r")
-		outputdata = f.readlines()
+		with open(filetouse, "rb") as f:
+			pass
+
+		# if it passes the previous line, then the file exists
 		fileExist = "true"
-		# ProxyServer finds a cache hit and generates a response message
-		tcpCliSock.send(("HTTP/1.0 200 OK\r\n").encode('utf-8'))
 
-		# You might want to play with this part.  It is not always html in the cache
-		tcpCliSock.send(("Content-Type:text/html\r\n".encode('utf-8')))
+		
+		# get file extension
+		filename_extension = os.path.splitext(filetouse)[1][1:]
+		
 
-		# Fill in start.
-		# send the content of the file to the client
-		for i in range(0, len(outputdata)):
-			tcpCliSock.send(outputdata[i].encode('utf-8'))
-
-
+		sendTextData(tcpCliSock, filetouse, filename_extension)
 		# Fill in end.
 
 		print ('Read from cache')
@@ -125,45 +150,51 @@ while 1:
 				fileobj = c.makefile('rwb', 0)
 				fileobj.write(("GET http://" + filename + " HTTP/1.0\n\n").encode('utf-8'))
 
+				print('fileobj', fileobj)
 
 				# Read the response into buffer
 
 				# Fill in start.
 
-				buffer = fileobj.readlines()
-				
-				if debug:
-					print ("Buffer", buffer)
-				
-
-				# Fill in end.
-
-				# Create a new file in the cache for the requested file.
-				# Create the directory structure if necessary.
-				# Also send the response in the buffer to client socket and the corresponding file in the cache
-				if not os.path.exists(filename):
+				try:
 					os.makedirs(os.path.dirname(filename))
+
+				except:
+					pass
+
 				
 				tmpFile = open("./" + filetouse,"wb")
-				# Fill in start.
 
+				# check if the filename is an image or text
+				filename_extension = os.path.splitext(filename)[1][1:]
+
+				buffer = fileobj.readlines()
+				# get content-length from header
+
+				# concatenate the buffer items starting at index 13
+				# this is to avoid the HTTP header
+				for i in range(12, len(buffer)):
+					tmpFile.write(buffer[i])
+				
+				tmpFile.close()
+
+				# 
+
+				
 				if debug:
 					print ("Buffer length", len(buffer))
 					print ("Buffer type", type(buffer))
 					# first buffer item
 					print ("Buffer item index 0", buffer[0])
 
-				# recurse the buffer and write the html content to the file
-				for i in range(13, len(buffer)):
-					tmpFile.write(buffer[i])
+			
+				print ("File created and cached \n sending data to client")
+
+				# send the content message to the client
 				
-				tmpFile.close()
+	
 
-				print ("File created and cached")
-
-				# send the content of the file to the client
-				#for i in range(0, len(buffer)):
-					#tcpCliSock.send(buffer[i])
+				sendTextData(tcpCliSock, filetouse, filename_extension)
 				
 
 				# Fill in end.
